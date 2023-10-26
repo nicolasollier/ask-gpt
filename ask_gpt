@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Source the environment file
+source ~/bin/openai_env.sh
+
+# ASCII loader function
+show_loader() {
+    local delay=0.1
+    local spinstr='|/-\'
+    while :
+    do
+        local temp=${spinstr#?}
+        printf " \033[32m[%c]\033[0m  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b\b"
+    done
+}
+
+# Display a welcome message
+echo -e "🤖 \033[35mAssistant:\033[0m Hi!"
+echo "---------------------------"
+echo -e "\033[34mType 'exit' anytime to leave the chat.\033[0m"
+echo "---------------------------"
+
+# Initialize an empty messages list with a system message
+messages='[{"role":"system","content":"You are a helpful assistant."}]'
+
+while true; do
+    # Ask the user for their input with a user emoji
+    echo -en "\033[33mType something:\033[0m "
+    read user_input
+
+    # Exit the loop if user inputs 'exit'
+    if [[ "$user_input" == "exit" ]]; then
+        echo -e "🤖 \033[35mAssistant:\033[0m Goodbye! 👋"
+        exit 0
+    fi
+
+    # Append the user's input to the messages list
+    messages=$(echo "$messages" | jq ". + [{\"role\":\"user\",\"content\":\"$user_input\"}]")
+
+    # Start the spinner in the background
+    show_loader &
+    SPINNER_PID=$!
+    disown $SPINNER_PID
+
+    # Use curl to send the entire messages list to OpenAI's API and store the response
+    response=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $OPENAI_API_KEY" \
+        -d "{\"model\":\"gpt-3.5-turbo\",\"messages\":$messages}" \
+        https://api.openai.com/v1/chat/completions)
+
+    # Clear the line to remove any residue from the spinner
+    printf "\r\033[K"
+    kill $SPINNER_PID > /dev/null 2>&1
+
+    # Extract the assistant's response using jq and append it to the messages list
+    assistant_response=$(echo "$response" | jq -r '.choices[0].message.content')
+    messages=$(echo "$messages" | jq ". + [{\"role\":\"assistant\",\"content\":\"$assistant_response\"}]")
+
+    echo -e "🤖 \033[35mAssistant:\033[0m $assistant_response"
+done
