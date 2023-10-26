@@ -11,6 +11,10 @@ This script creates a basic chatbot interface in the terminal, powered by OpenAI
 1. Make sure you have `jq` and `curl` installed.
    ```bash
    sudo apt install jq curl
+   ```
+   or
+   ```node
+   npm -i jq curl
 2. Store your OpenAI API key in a file named openai_env.sh inside ~/bin/ or elsewhere safe with the following content:
    ```bash
     export OPENAI_API_KEY='YOUR_API_KEY_HERE'
